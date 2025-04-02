@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
 #Flet
 def main(page: ft.Page):
-    page.title = "Recomendador de Canciones Spotify"
+    page.title = "Recophy"
     page.scroll = ft.ScrollMode.AUTO
 
     lista_canciones = ft.Column()
@@ -57,12 +57,12 @@ def main(page: ft.Page):
     def mostrar_recomendaciones(nombre_cancion):
         lista_recomendaciones.controls.clear()
 
-        # Buscar ID de la canción
+        
         resultados = sp.search(q=nombre_cancion, type='track', limit=1)
         if resultados['tracks']['items']:
             track_id = resultados['tracks']['items'][0]['id']
 
-            # Obtener recomendaciones
+            
             recomendaciones = sp.recommendations(seed_tracks=[track_id], limit=5)
 
             for track in recomendaciones['tracks']:
