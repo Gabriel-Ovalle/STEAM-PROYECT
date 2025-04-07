@@ -77,7 +77,18 @@ def main(page: ft.Page):
                     ft.TextButton(text="🔗 Abrir en Spotify", url=url)
                 )
         else:
-            lista_recomendaciones.controls.append(ft.Text("No se encontraron recomendaciones."))
+            lista_recomendaciones.controls.append(
+    ft.Row([
+        ft.Image(src=track['album']['images'][1]['url'], width=60, height=60),
+        ft.Column([
+            ft.Text(f"{nombre} - {artista}"),
+            ft.TextButton(text="🔗 Spotify", url=url),
+        ])
+    ])
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 20
+
+)
 
         page.update()
 
@@ -89,5 +100,20 @@ def main(page: ft.Page):
         ft.Text("Recomendaciones:", size=20, weight="bold"),
         lista_recomendaciones,
     )
+  
+    def abrir_perfil_usuario():
+    user = sp.current_user()
+    nombre = user.get("display_name", "Usuario")
+    url = user["external_urls"]["spotify"]
+    page.dialog = ft.AlertDialog(
+        title=ft.Text(f"Hola, {nombre}!"),
+        content=ft.TextButton(text=" Ver tu perfil de Spotify", url=url),
+        open=True,
+    )
+    page.update()
+    ft.ElevatedButton("Ver perfil", on_click=lambda _: abrir_perfil_usuario()),
+    
+
+
 
 ft.app(target=main)
