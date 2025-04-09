@@ -5,7 +5,10 @@ from spotipy.oauth2 import SpotifyOAuth
 import flet as ft
 
 
-load_dotenv()
+=======
+# credenciales
+load_dotenv("e.env")
+>>>>>>> 7d1f997fb66a2d897fe977ea3bef36f5bdfa0b8c
 
 
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -115,3 +118,5 @@ def main(page: ft.Page):
     ft.ElevatedButton("Ver perfil", on_click=lambda _: abrir_perfil_usuario()),
 
 ft.app(target=main)
+
+#ayisyen?
