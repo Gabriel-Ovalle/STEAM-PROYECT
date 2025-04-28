@@ -8,7 +8,6 @@ import flet as ft
 =======
 # credenciales
 load_dotenv("e.env")
->>>>>>> 7d1f997fb66a2d897fe977ea3bef36f5bdfa0b8c
 
 
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -117,6 +116,8 @@ def main(page: ft.Page):
     page.update()
     ft.ElevatedButton("Ver perfil", on_click=lambda _: abrir_perfil_usuario()),
 
+
 ft.app(target=main)
 
 #ayisyen?
+#ou renmen fanm ayisyen?
