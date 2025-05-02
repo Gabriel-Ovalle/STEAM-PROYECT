@@ -5,7 +5,6 @@ from spotipy.oauth2 import SpotifyOAuth
 import flet as ft
 
 
-=======
 # credenciales
 load_dotenv("e.env")
 
@@ -104,11 +103,11 @@ def main(page: ft.Page):
         ft.Text("Recomendaciones:", size=20, weight="bold"),
         lista_recomendaciones,
     )
-     def abrir_perfil_usuario():
-    user = sp.current_user()
-    nombre = user.get("display_name", "Usuario")
-    url = user["external_urls"]["spotify"]
-    page.dialog = ft.AlertDialog(
+    def abrir_perfil_usuario():
+        user = sp.current_user()
+        nombre = user.get("display_name", "Usuario")
+        url = user["external_urls"]["spotify"]
+        page.dialog = ft.AlertDialog(
         title=ft.Text(f"Hola, {nombre}!"),
         content=ft.TextButton(text=" Ver tu perfil de Spotify", url=url),
         open=True,
