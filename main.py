@@ -3,35 +3,13 @@ from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import flet as ft
+import webbrowser
 
 # Load environment variables
 load_dotenv("e.env")
 
-# Spotify authentication
-try:
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=os.getenv("SPOTIPY_CLIENT_ID"),
-        client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
-        scope="user-top-read user-read-private"
-    ))
-except Exception as e:
-    print(f"Error initializing Spotify: {e}")
-    exit()
-
-def obtener_canciones_top(limit=5, time_range="medium_term"):
-    try:
-        top_tracks = sp.current_user_top_tracks(limit=limit, time_range=time_range)
-        return [
-            (
-                track['name'],
-                track['artists'][0]['name'],
-                track['id']
-            ) for track in top_tracks['items']
-        ]
-    except Exception as e:
-        print(f"Error getting top tracks: {e}")
-        return []
+# Initialize Spotify client
+sp = None
 
 def main(page: ft.Page):
     page.title = "Recophy"
@@ -39,68 +17,96 @@ def main(page: ft.Page):
     page.padding = 20
     page.scroll = ft.ScrollMode.AUTO
 
-    lista_canciones = ft.Column()
+    lista_elementos = ft.Column()
     lista_recomendaciones = ft.Column()
 
-    # Error alert
+    # Authentication status
+    auth_text = ft.Text("Not authenticated", color=ft.colors.RED)
+    
+    # Snackbar for errors
     def show_error(message):
-        page.snack_bar = ft.SnackBar(ft.Text(f"Error: {message}"), bgcolor=ft.colors.RED)
+        page.snack_bar = ft.SnackBar(
+            ft.Text(message, color=ft.colors.WHITE),
+            bgcolor=ft.colors.RED_800,
+            duration=3000
+        )
         page.snack_bar.open = True
         page.update()
 
-    # Load top tracks
-    def cargar_canciones(e=None):
+    # Authentication functions
+    def link_account(e):
+        global sp
         try:
-            canciones = obtener_canciones_top()
-            if not canciones:
-                show_error("No se encontraron canciones")
-                return
-
-            lista_canciones.controls.clear()
-            seed_tracks = [track[2] for track in canciones]
-            page.session.set("seed_tracks", seed_tracks[:5])
-
-            for nombre, artista, track_id in canciones:
-                lista_canciones.controls.append(
-                    ft.ElevatedButton(
-                        text=f"{nombre} - {artista}",
-                        on_click=lambda e, tid=track_id: mostrar_recomendaciones(tid)
-                    )
-                )
-            page.update()
+            auth_manager = SpotifyOAuth(
+                client_id=os.getenv("SPOTIPY_CLIENT_ID"),
+                client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
+                redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+                scope="user-top-read user-read-private",
+                show_dialog=True
+            )
+            
+            # Open browser manually
+            auth_url = auth_manager.get_authorize_url()
+            webbrowser.open(auth_url)  # Open browser window
+            
+            # Wait for authentication
+            token_info = auth_manager.get_access_token()
+            if token_info:
+                sp = spotipy.Spotify(auth_manager=auth_manager)
+                auth_text.value = "Authenticated!"
+                auth_text.color = ft.colors.GREEN
+                page.update()
         except Exception as e:
-            show_error(str(e))
+            show_error(f"Auth error: {str(e)}")
 
-    # Show recommendations for single track
-    def mostrar_recomendaciones(track_id):
+    def check_authentication():
+        return sp and sp.auth_manager.get_cached_token()
+
+    # Data fetching functions
+    def get_top_tracks(limit=5):
+        if not check_authentication():
+            show_error("Authenticate first")
+            return []
         try:
-            recomendaciones = sp.recommendations(seed_tracks=[track_id], limit=5)
-            mostrar_resultados(recomendaciones)
+            results = sp.current_user_top_tracks(limit=limit)
+            return [(item['name'], item['artists'][0]['name'], item['id']) for item in results['items']]
         except Exception as e:
-            show_error(str(e))
+            show_error(f"Track error: {str(e)}")
+            return []
 
-    # Show recommendations from all top tracks
-    def generar_recomendaciones(e):
+    def get_top_artists(limit=5):
+        if not check_authentication():
+            show_error("Authenticate first")
+            return []
         try:
-            seed_tracks = page.session.get("seed_tracks")
-            if not seed_tracks:
-                show_error("Carga tus canciones primero")
-                return
-
-            recomendaciones = sp.recommendations(seed_tracks=seed_tracks, limit=10)
-            mostrar_resultados(recomendaciones)
+            results = sp.current_user_top_artists(limit=limit)
+            return [(item['name'], item['id']) for item in results['items']]
         except Exception as e:
-            show_error(str(e))
+            show_error(f"Artist error: {str(e)}")
+            return []
 
-    # Helper to display recommendations
-    def mostrar_resultados(recomendaciones):
+    # Recommendation functions
+    def show_recommendations(seed_type, seed_ids):
+        if not check_authentication():
+            show_error("Authenticate first")
+            return
+        try:
+            recommendations = sp.recommendations(
+                **{seed_type: seed_ids},
+                limit=10
+            )
+            display_recommendations(recommendations)
+        except Exception as e:
+            show_error(f"Recommendation error: {str(e)}")
+
+    def display_recommendations(recommendations):
         lista_recomendaciones.controls.clear()
-        if not recomendaciones.get('tracks'):
-            lista_recomendaciones.controls.append(ft.Text("No hay recomendaciones"))
+        if not recommendations.get('tracks'):
+            lista_recomendaciones.controls.append(ft.Text("No recommendations found"))
             page.update()
             return
 
-        for track in recomendaciones['tracks']:
+        for track in recommendations['tracks']:
             nombre = track['name']
             artista = track['artists'][0]['name']
             url = track['external_urls']['spotify']
@@ -111,40 +117,78 @@ def main(page: ft.Page):
                     ft.Image(src=imagen_url, width=60, height=60),
                     ft.Column([
                         ft.Text(f"{nombre} - {artista}"),
-                        ft.TextButton("🔗 Spotify", url=url),
+                        ft.TextButton("Open in Spotify", url=url),
                     ])
                 ])
             )
         page.update()
 
-    # User profile
-    def abrir_perfil_usuario(e=None):
-        try:
-            user = sp.current_user()
-            page.dialog = ft.AlertDialog(
-                title=ft.Text(f"Hola, {user.get('display_name', 'Usuario')}!"),
-                content=ft.TextButton("Ver perfil", url=user["external_urls"]["spotify"]),
-                open=True
-            )
-            page.update()
-        except Exception as e:
-            show_error(str(e))
+    # Button handlers
+    def load_tracks(e):
+        tracks = get_top_tracks()
+        if not tracks:
+            return
 
-    # UI Setup
+        page.session.set("seed_type", "seed_tracks")
+        page.session.set("seeds", [track[2] for track in tracks][:5])
+
+        lista_elementos.controls.clear()
+        for nombre, artista, track_id in tracks:
+            lista_elementos.controls.append(
+                ft.ElevatedButton(
+                    f"🎵 {nombre} - {artista}",
+                    on_click=lambda e, tid=track_id: show_recommendations("seed_tracks", [tid])
+                )
+            )
+        page.update()
+
+    def load_artists(e):
+        artists = get_top_artists()
+        if not artists:
+            return
+
+        page.session.set("seed_type", "seed_artists")
+        page.session.set("seeds", [artist[1] for artist in artists][:5])
+
+        lista_elementos.controls.clear()
+        for nombre, artist_id in artists:
+            lista_elementos.controls.append(
+                ft.ElevatedButton(
+                    f"🎤 {nombre}",
+                    on_click=lambda e, aid=artist_id: show_recommendations("seed_artists", [aid])
+                )
+            )
+        page.update()
+
+    def generate_recommendations(e):
+        seed_type = page.session.get("seed_type")
+        seeds = page.session.get("seeds", [])
+        
+        if not seeds or not seed_type:
+            show_error("Load tracks/artists first")
+            return
+
+        show_recommendations(seed_type, seeds)
+
+    # UI Components
     page.add(
-        ft.Text("Tus canciones más escuchadas:", size=20, weight="bold"),
         ft.Row([
-            ft.ElevatedButton("Cargar canciones", on_click=cargar_canciones),
-            ft.ElevatedButton("Ver perfil", on_click=abrir_perfil_usuario),
-            ft.ElevatedButton("🎵 Recomendaciones", on_click=generar_recomendaciones),
+            ft.ElevatedButton("🔗 Link Spotify Account", on_click=link_account),
+            auth_text
         ]),
-        lista_canciones,
         ft.Divider(),
-        ft.Text("Recomendaciones:", size=20, weight="bold"),
-        lista_recomendaciones,
+        ft.Text("Load your data:", size=20, weight="bold"),
+        ft.Row([
+            ft.ElevatedButton("💿 Load Top Tracks", on_click=load_tracks),
+            ft.ElevatedButton("🎤 Load Top Artists", on_click=load_artists),
+        ]),
+        lista_elementos,
+        ft.Divider(),
+        ft.Text("Your Recommendations:", size=20, weight="bold"),
+        ft.ElevatedButton("✨ Generate Recommendations", on_click=generate_recommendations),
+        lista_recomendaciones
     )
 
-    # Initial load
     page.update()
 
 ft.app(target=main)
