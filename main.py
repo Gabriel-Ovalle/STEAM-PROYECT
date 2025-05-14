@@ -5,7 +5,9 @@ from spotipy.oauth2 import SpotifyOAuth
 import flet as ft
 import webbrowser
 
-
+#last software development project ever. feels like yesterday i was in 11th grade cogiendo python con usted, lui, y hector, it also feels like yesterday cuando le di su pela en brawlhalla.
+#-Fitch
+#P.S.: me gradue invicto
 load_dotenv("e.env")
 
 
@@ -44,7 +46,7 @@ def main(page: ft.Page):
             )
             
             auth_url = auth_manager.get_authorize_url()
-            webbrowser.open(auth_url)  # Open browser window
+            webbrowser.open(auth_url) 
             
             token_info = auth_manager.get_access_token()
             if token_info:
