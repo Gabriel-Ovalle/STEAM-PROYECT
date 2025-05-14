@@ -5,10 +5,10 @@ from spotipy.oauth2 import SpotifyOAuth
 import flet as ft
 import webbrowser
 
-# Load environment variables
+
 load_dotenv("e.env")
 
-# Initialize Spotify client
+
 sp = None
 
 def main(page: ft.Page):
@@ -20,10 +20,9 @@ def main(page: ft.Page):
     lista_elementos = ft.Column()
     lista_recomendaciones = ft.Column()
 
-    # Authentication status
+
     auth_text = ft.Text("Not authenticated", color=ft.colors.RED)
     
-    # Snackbar for errors
     def show_error(message):
         page.snack_bar = ft.SnackBar(
             ft.Text(message, color=ft.colors.WHITE),
@@ -33,7 +32,6 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         page.update()
 
-    # Authentication functions
     def link_account(e):
         global sp
         try:
@@ -45,11 +43,9 @@ def main(page: ft.Page):
                 show_dialog=True
             )
             
-            # Open browser manually
             auth_url = auth_manager.get_authorize_url()
             webbrowser.open(auth_url)  # Open browser window
             
-            # Wait for authentication
             token_info = auth_manager.get_access_token()
             if token_info:
                 sp = spotipy.Spotify(auth_manager=auth_manager)
@@ -62,7 +58,6 @@ def main(page: ft.Page):
     def check_authentication():
         return sp and sp.auth_manager.get_cached_token()
 
-    # Data fetching functions
     def get_top_tracks(limit=5):
         if not check_authentication():
             show_error("Authenticate first")
@@ -85,7 +80,6 @@ def main(page: ft.Page):
             show_error(f"Artist error: {str(e)}")
             return []
 
-    # Recommendation functions
     def show_recommendations(seed_type, seed_ids):
         if not check_authentication():
             show_error("Authenticate first")
@@ -123,7 +117,6 @@ def main(page: ft.Page):
             )
         page.update()
 
-    # Button handlers
     def load_tracks(e):
         tracks = get_top_tracks()
         if not tracks:
@@ -170,7 +163,6 @@ def main(page: ft.Page):
 
         show_recommendations(seed_type, seeds)
 
-    # UI Components
     page.add(
         ft.Row([
             ft.ElevatedButton("🔗 Link Spotify Account", on_click=link_account),
